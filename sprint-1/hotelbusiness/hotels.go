@@ -37,10 +37,10 @@ func ComputeLoad(guests []Guest) []Load {
 	var load []Load
 	lastLoad := 0
 
-	for i, d := range days {
-		if lastLoad != d.GuestCount {
-			load = append(load, Load{StartDate: i, GuestCount: d.GuestCount})
-			lastLoad = d.GuestCount
+	for i, day := range days {
+		if lastLoad != day.GuestCount {
+			load = append(load, Load{StartDate: i, GuestCount: day.GuestCount})
+			lastLoad = day.GuestCount
 		}
 	}
 

@@ -15,12 +15,7 @@ func Spell(n int64) string {
 		return "zero"
 	}
 
-	var out string
-
-	if n < 0 {
-		n = -n
-		out = "minus"
-	}
+	n, out := spellMinus(n)
 
 	billions := (n / 1_000_000_000)
 	millions := (n / 1_000_000) % 1_000
@@ -44,6 +39,14 @@ func Spell(n int64) string {
 	}
 
 	return out
+}
+
+func spellMinus(n int64) (int64, string) {
+	if n < 0 {
+		return -n, "minus"
+	}
+
+	return n, ""
 }
 
 func spellThousand(n int64) string {
