@@ -25,8 +25,11 @@ https://stackoverflow.com/questions/32151776/visualize-tree-in-bash-like-the-out
 */
 
 import (
+	"fmt"
 	"io"
 	"os"
+	"slices"
+	"strings"
 )
 
 /*
@@ -81,7 +84,99 @@ func main() {
 // dirTree: `tree` program implementation, top-level function, signature is fixed.
 // Write `path` dir listing to `out`. If `prinFiles` is set, files is listed along with directories.
 func dirTree(out io.Writer, path string, printFiles bool) error {
-	// Function to implement, signature is given, don't touch it.
+	return dirTreeOneLevel(out, path, ROOT_PREFIX, printFiles)
+}
+
+func dirTreeOneLevel(out io.Writer, path, prefix string, printFiles bool) error {
+	files, err := os.ReadDir(path)
+	if err != nil {
+		return fmt.Errorf("dirTreeOneLevel: %v", err)
+	}
+
+	files = preprocessingFiles(files, !printFiles)
+	indexLastBranch := getLastBranch(files, printFiles)
+
+	var branch, tab string
+
+	for i, file := range files {
+		if i == indexLastBranch {
+			branch = LAST_BRANCH
+			tab = LAST_TAB
+		} else {
+			branch = BRANCHING_TRUNK
+			tab = TRUNC_TAB
+		}
+
+		record, err := getRecord(file, prefix, branch)
+		if err != nil {
+			return fmt.Errorf("dirTreeOneLevel: %v", err)
+		}
+
+		out.Write([]byte(record))
+
+		if file.IsDir() {
+			nextPath := path + string(os.PathSeparator) + file.Name()
+			if err = dirTreeOneLevel(out, nextPath, prefix+tab, printFiles); err != nil {
+				return fmt.Errorf("dirTreeOneLevel: %v", err)
+			}
+		}
+	}
 
 	return nil
+}
+
+func preprocessingFiles(files []os.DirEntry, deleteRegularFiles bool) []os.DirEntry {
+	if deleteRegularFiles {
+		var dirs []os.DirEntry
+		for _, file := range files {
+			if file.IsDir() {
+				dirs = append(dirs, file)
+			}
+		}
+
+		files = dirs
+	}
+
+	slices.SortFunc(files, func(a, b os.DirEntry) int {
+		return strings.Compare(a.Name(), b.Name())
+	})
+
+	return files
+}
+
+func getLastBranch(files []os.DirEntry, printFiles bool) int {
+	if printFiles {
+		return len(files) - 1
+	}
+
+	lastBranch := len(files) - 1
+	for i, file := range files {
+		if file.IsDir() {
+			lastBranch = i
+		}
+	}
+	return lastBranch
+}
+
+func getRecord(file os.DirEntry, prefix, branch string) (string, error) {
+	if file.IsDir() {
+		return strings.Join([]string{prefix, branch, file.Name(), EOL}, ""), nil
+	}
+
+	record := prefix + branch + file.Name()
+
+	info, err := file.Info()
+	if err != nil {
+		return "", fmt.Errorf("getRecord: %v", err)
+	}
+
+	if info.Size() == 0 {
+		record = fmt.Sprintf("%s (%s)", record, EMPTY_FILE)
+	} else {
+		record = fmt.Sprintf("%s (%db)", record, info.Size())
+	}
+
+	record += EOL
+
+	return record, nil
 }
