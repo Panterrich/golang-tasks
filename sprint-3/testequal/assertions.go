@@ -10,46 +10,8 @@ import (
 
 func checkEqual(expected, actual interface{}) bool {
 	switch e := expected.(type) {
-	case int:
-		if a, ok := actual.(int); ok && e == a {
-			return true
-		}
-	case int8:
-		if a, ok := actual.(int8); ok && e == a {
-			return true
-		}
-	case int16:
-		if a, ok := actual.(int16); ok && e == a {
-			return true
-		}
-	case int32:
-		if a, ok := actual.(int32); ok && e == a {
-			return true
-		}
-	case int64:
-		if a, ok := actual.(int64); ok && e == a {
-			return true
-		}
-	case uint:
-		if a, ok := actual.(uint); ok && e == a {
-			return true
-		}
-	case uint8:
-		if a, ok := actual.(uint8); ok && e == a {
-			return true
-		}
-	case uint16:
-		if a, ok := actual.(uint16); ok && e == a {
-			return true
-		}
-	case uint32:
-		if a, ok := actual.(uint32); ok && e == a {
-			return true
-		}
-	case uint64:
-		if a, ok := actual.(uint64); ok && e == a {
-			return true
-		}
+	case int, int8, int16, int32, int64, uint, uint8, uint16, uint32, uint64:
+		return expected == actual
 	case string:
 		if a, ok := actual.(string); ok && e == a {
 			return true
