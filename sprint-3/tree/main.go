@@ -129,11 +129,11 @@ func (w *GraphicDirWorker) Work(index int, file os.DirEntry) error {
 
 	record, err := w.getRecord(file)
 	if err != nil {
-		return fmt.Errorf("get record: %v", err)
+		return fmt.Errorf("failed to get record for file %s: %v", file, err)
 	}
 
 	if _, err := w.out.Write([]byte(record)); err != nil {
-		return fmt.Errorf("write: %v", err)
+		return fmt.Errorf("failed to write: %v", err)
 	}
 
 	return nil
