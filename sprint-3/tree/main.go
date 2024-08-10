@@ -25,8 +25,11 @@ https://stackoverflow.com/questions/32151776/visualize-tree-in-bash-like-the-out
 */
 
 import (
+	"fmt"
 	"io"
 	"os"
+	"slices"
+	"strings"
 )
 
 /*
@@ -62,6 +65,117 @@ const (
 	USE_RECURSION_ENV_VAL = "YES"
 )
 
+type GraphicDirWorker struct {
+	out        io.Writer
+	printFiles bool
+
+	indexLastBranch int
+	prefix          string
+	branch          string
+	tab             string
+}
+
+var _ DirWorker = (*GraphicDirWorker)(nil)
+
+func NewGraphicDirWorker(out io.Writer, printFiles bool) GraphicDirWorker {
+	return GraphicDirWorker{
+		out:        out,
+		printFiles: printFiles,
+	}
+}
+
+func (w *GraphicDirWorker) Clone() DirWorker {
+	return &GraphicDirWorker{
+		out:        w.out,
+		printFiles: w.printFiles,
+
+		indexLastBranch: w.indexLastBranch,
+		prefix:          w.prefix,
+		branch:          w.branch,
+		tab:             w.tab,
+	}
+}
+
+func (w *GraphicDirWorker) ProcessFiles(files []os.DirEntry) ([]os.DirEntry, error) {
+	if !w.printFiles {
+		var dirs []os.DirEntry
+		for _, file := range files {
+			if file.IsDir() {
+				dirs = append(dirs, file)
+			}
+		}
+
+		files = dirs
+	}
+
+	slices.SortFunc(files, func(a, b os.DirEntry) int {
+		return strings.Compare(a.Name(), b.Name())
+	})
+
+	w.indexLastBranch = getLastBranch(files, w.printFiles)
+	w.prefix += w.tab
+
+	return files, nil
+}
+
+func (w *GraphicDirWorker) Work(index int, file os.DirEntry) error {
+	if index == w.indexLastBranch {
+		w.branch = LAST_BRANCH
+		w.tab = LAST_TAB
+	} else {
+		w.branch = BRANCHING_TRUNK
+		w.tab = TRUNC_TAB
+	}
+
+	record, err := w.getRecord(file)
+	if err != nil {
+		return fmt.Errorf("failed to get record for file %s: %v", file, err)
+	}
+
+	if _, err := w.out.Write([]byte(record)); err != nil {
+		return fmt.Errorf("failed to write: %v", err)
+	}
+
+	return nil
+}
+
+func (w *GraphicDirWorker) getRecord(file os.DirEntry) (string, error) {
+	if file.IsDir() {
+		return strings.Join([]string{w.prefix, w.branch, file.Name(), EOL}, ""), nil
+	}
+
+	record := strings.Join([]string{w.prefix, w.branch, file.Name()}, "")
+
+	info, err := file.Info()
+	if err != nil {
+		return "", fmt.Errorf("file %s info : %v", file.Name(), err)
+	}
+
+	if info.Size() == 0 {
+		record = fmt.Sprintf("%s (%s)", record, EMPTY_FILE)
+	} else {
+		record = fmt.Sprintf("%s (%db)", record, info.Size())
+	}
+
+	record += EOL
+
+	return record, nil
+}
+
+func getLastBranch(files []os.DirEntry, printFiles bool) int {
+	if printFiles {
+		return len(files) - 1
+	}
+
+	lastBranch := len(files) - 1
+	for i, file := range files {
+		if file.IsDir() {
+			lastBranch = i
+		}
+	}
+	return lastBranch
+}
+
 func main() {
 	// This code is given
 	if !(len(os.Args) == 2 || len(os.Args) == 3) {
@@ -79,9 +193,10 @@ func main() {
 }
 
 // dirTree: `tree` program implementation, top-level function, signature is fixed.
-// Write `path` dir listing to `out`. If `prinFiles` is set, files is listed along with directories.
+// Write `path` dir listing to `out`. If `printFiles` is set, files is listed along with directories.
 func dirTree(out io.Writer, path string, printFiles bool) error {
-	// Function to implement, signature is given, don't touch it.
+	walker := NewPreOrderDirWalker()
+	worker := NewGraphicDirWorker(out, printFiles)
 
-	return nil
+	return walker.Walk(path, &worker)
 }
